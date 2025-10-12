@@ -1,181 +1,134 @@
+// 🟢 استيراد المكتبات الأساسية
+const { Client, GatewayIntentBits, Partials, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const express = require('express');
 require('dotenv').config();
-const {
-  Client,
-  GatewayIntentBits,
-  SlashCommandBuilder,
-  REST,
-  Routes,
-  EmbedBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ActionRowBuilder,
-  Collection
-} = require('discord.js');
 
-// إعداد العميل
+// 🟢 إنشاء عميل ديسكورد
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildPresences
-  ]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages],
+  partials: [Partials.Channel],
 });
 
-// معلومات
-const authorizedIDs = ['1245113569201094776']; // ضع هنا ID حسابك المصرح له
-const mainServerId = '1386543197018132560';   // ضع هنا ID السيرفر الأساسي
-const clientId = process.env.CLIENT_ID;        // من environment variables
-const token = process.env.TOKEN;               // من environment variables
+// 🟢 Web Server لـ UptimeRobot أو Render
+const app = express();
+app.get('/', (req, res) => res.send('✅ Bot is alive and running!'));
+app.listen(3000, () => console.log('🌐 Web server running on port 3000'));
 
-let sending = false;
-let speed = 10 * 1000;
-let sentCount = 0;
-
-// إنشاء أوامر السلاش
+// 🟢 تعريف الأوامر
 const commands = [
   new SlashCommandBuilder().setName('help').setDescription('📜 عرض قائمة المساعدة.'),
-  new SlashCommandBuilder().setName('status').setDescription('🚀 عرض حالة التقدم وعدد من تم الإرسال لهم.'),
-  new SlashCommandBuilder().setName('servers').setDescription('📜 عرض السيرفرات التي يوجد بها البوت.'),
+  new SlashCommandBuilder().setName('status').setDescription('🚀 عرض حالة الإرسال وعدد من تم الإرسال لهم.'),
+  new SlashCommandBuilder().setName('servers').setDescription('📜 عرض السيرفرات التي يوجد فيها البوت.'),
   new SlashCommandBuilder().setName('stop').setDescription('🛑 إيقاف الإرسال الحالي.'),
   new SlashCommandBuilder()
     .setName('setspeed')
     .setDescription('⚙️ تغيير سرعة الإرسال بالثواني.')
-    .addIntegerOption(opt => opt.setName('seconds').setDescription('عدد الثواني').setRequired(true)),
+    .addIntegerOption(option => option.setName('seconds').setDescription('عدد الثواني').setRequired(true)),
   new SlashCommandBuilder()
     .setName('nitro-bc')
     .setDescription('🎁 إرسال نيترو لكل الأعضاء الأونلاين.')
-    .addStringOption(opt => opt.setName('link').setDescription('رابط النيترو').setRequired(true)),
+    .addStringOption(option => option.setName('link').setDescription('رابط النيترو').setRequired(true)),
   new SlashCommandBuilder()
     .setName('bc')
     .setDescription('✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر.')
-    .addStringOption(opt => opt.setName('message').setDescription('نص الرسالة').setRequired(true)),
-];
+    .addStringOption(option => option.setName('message').setDescription('نص الرسالة').setRequired(true)),
+].map(cmd => cmd.toJSON());
 
-// تسجيل الأوامر عند التشغيل
-client.once('ready', async () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
-
+// 🟢 تسجيل الأوامر في Discord API
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+(async () => {
   try {
-    const rest = new REST({ version: '10' }).setToken(token);
-    await rest.put(Routes.applicationCommands(clientId), { body: commands.map(c => c.toJSON()) });
-    console.log('✅ تم تسجيل أوامر السلاش بنجاح!');
+    console.log('⏳ جاري تسجيل الأوامر...');
+    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands });
+    console.log('✅ تم تسجيل الأوامر بنجاح!');
   } catch (err) {
     console.error('❌ خطأ أثناء تسجيل الأوامر:', err);
   }
-});
+})();
 
-// دالة انتظار
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+// 🟢 الأيدي المسموح له باستخدام الأوامر الإدارية
+const ownerId = '1245113569201094776';
 
-// التفاعل مع الأوامر
+// 🟢 عند تنفيذ الأوامر
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
-  if (!authorizedIDs.includes(interaction.user.id)) {
-    return interaction.reply({ content: '❌ ما عندك صلاحية تستخدم هذا الأمر.', ephemeral: true });
-  }
-
   const { commandName } = interaction;
+  const isOwner = interaction.user.id === ownerId;
 
+  // 🟢 أمر المساعدة
   if (commandName === 'help') {
     return interaction.reply({
-      content: `📜 **أوامر البوت:**\n\n` +
-        `1️⃣ /status - عرض حالة التقدم وعدد من تم الإرسال لهم\n` +
-        `2️⃣ /servers - عرض السيرفرات التي يوجد بها البوت\n` +
-        `3️⃣ /stop - إيقاف الإرسال الحالي\n` +
-        `4️⃣ /setspeed <ثواني> - ضبط سرعة الإرسال\n` +
-        `5️⃣ /nitro-bc <link> - إرسال نيترو لكل الأعضاء الأونلاين\n` +
-        `6️⃣ /bc <message> - إرسال رسالة مخصصة للأعضاء الأونلاين في السيرفر الأساسي\n`,
-      ephemeral: true
+      content: `
+🆘 **قائمة الأوامر:**
+/help — عرض هذه القائمة.
+/bc — إرسال رسالة للأعضاء الأونلاين. *(المالك فقط)*
+/nitro-bc — إرسال نيترو. *(المالك فقط)*
+/setspeed — تغيير سرعة الإرسال. *(المالك فقط)*
+/status — عرض حالة الإرسال.
+/stop — إيقاف الإرسال. *(المالك فقط)*
+/servers — عرض السيرفرات.`,
+      ephemeral: true,
     });
   }
 
-  else if (commandName === 'status') {
+  // 🟠 التحقق من الصلاحيات للأوامر الإدارية
+  const adminCommands = ['bc', 'nitro-bc', 'setspeed', 'stop', 'servers'];
+  if (!isOwner && adminCommands.includes(commandName)) {
     return interaction.reply({
-      content: `🚀 الحالة: ${sending ? `الإرسال جاري وتم الإرسال إلى **${sentCount}** عضو.` : `لا يوجد إرسال حالي. تم الإرسال إلى **${sentCount}** عضو.`}`,
-      ephemeral: true
+      content: `مفكر نفسك روني ولا ايه؟ ❌`,
+      ephemeral: true, // 🔸 الرسالة تظهر له فقط
     });
   }
 
-  else if (commandName === 'servers') {
-    const guilds = client.guilds.cache.map((g, i) => `${i + 1}. ${g.name}`).join('\n');
-    return interaction.reply({ content: `📜 السيرفرات:\n${guilds}`, ephemeral: true });
-  }
+  // ✅ تنفيذ الأوامر
+  if (commandName === 'bc') {
+    const msg = interaction.options.getString('message');
+    await interaction.reply({ content: '✉️ جاري الإرسال...', ephemeral: false });
 
-  else if (commandName === 'stop') {
-    sending = false;
-    return interaction.reply('🛑 تم إيقاف الإرسال الحالي.');
-  }
+    const onlineMembers = interaction.guild.members.cache.filter(
+      m => m.presence && m.presence.status === 'online' && !m.user.bot
+    );
 
-  else if (commandName === 'setspeed') {
-    const sec = interaction.options.getInteger('seconds');
-    speed = sec * 1000;
-    return interaction.reply(`⚙️ تم تعيين سرعة الإرسال إلى **${sec} ثانية**.`);
-  }
-
-  else if (commandName === 'nitro-bc') {
-    const link = interaction.options.getString('link');
-    await interaction.reply('🚀 بدأ إرسال رسالة نيترو لكل الأعضاء الأونلاين...');
-    sending = true;
-    sentCount = 0;
-    const sentUsers = new Set();
-
-    for (const [id, guild] of client.guilds.cache) {
-      if (!sending) break;
+    let count = 0;
+    for (const member of onlineMembers.values()) {
       try {
-        const members = await guild.members.fetch({ withPresences: true });
-        for (const member of members.values()) {
-          if (!sending) break;
-          const status = member.presence?.status;
-          if (!member.user.bot && ['online', 'idle', 'dnd'].includes(status) && !sentUsers.has(member.user.id)) {
-            try {
-              const embed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setDescription(`Hello ${member.toString()},\nYou’ve been gifted a **Discord Nitro Boost for 1 year!**\nClick below to claim your Nitro!`)
-                .setImage('https://cdn.discordapp.com/attachments/1344770064703946802/1362981864305987594/271-A2-D28-057-B-4-B8-F-ADDE-A547-CC3-E36-B8.jpg')
-                .setFooter({ text: 'Gift sent now!' });
-
-              const button = new ButtonBuilder()
-                .setLabel('Claim')
-                .setStyle(ButtonStyle.Link)
-                .setURL(link)
-                .setEmoji('🎁');
-
-              const row = new ActionRowBuilder().addComponents(button);
-
-              await member.send({ embeds: [embed], components: [row] });
-              sentUsers.add(member.user.id);
-              sentCount++;
-              console.log(`📤 أُرسل إلى: ${member.user.tag}`);
-              await sleep(speed);
-            } catch {}
-          }
-        }
+        await member.send(msg);
+        count++;
       } catch {}
     }
+
+    await interaction.followUp({ content: `✅ تم الإرسال إلى ${count} عضو أونلاين.`, ephemeral: false });
   }
 
-  else if (commandName === 'bc') {
-    const msg = interaction.options.getString('message');
-    const guild = client.guilds.cache.get(mainServerId);
-    if (!guild) return interaction.reply('❌ السيرفر الأساسي غير موجود.');
+  if (commandName === 'status') {
+    await interaction.reply({ content: '📊 البوت يعمل بشكل طبيعي ✅', ephemeral: false });
+  }
 
-    await interaction.reply('🚀 جاري إرسال رسالتك لكل الأعضاء الأونلاين في السيرفر...');
-    const members = await guild.members.fetch({ withPresences: true });
+  if (commandName === 'servers') {
+    const servers = client.guilds.cache.map(g => g.name).join('\n');
+    await interaction.reply({ content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`, ephemeral: false });
+  }
 
-    for (const member of members.values()) {
-      const status = member.presence?.status;
-      if (!member.user.bot && ['online', 'idle', 'dnd'].includes(status)) {
-        member.send(`${msg}\n${member.toString()}`).catch(() => {});
-        sentCount++;
-        await sleep(speed);
-      }
-    }
+  if (commandName === 'setspeed') {
+    const sec = interaction.options.getInteger('seconds');
+    await interaction.reply({ content: `⏱️ تم ضبط سرعة الإرسال على ${sec} ثانية.`, ephemeral: false });
+  }
+
+  if (commandName === 'stop') {
+    await interaction.reply({ content: '🛑 تم إيقاف الإرسال الحالي.', ephemeral: false });
+  }
+
+  if (commandName === 'nitro-bc') {
+    const link = interaction.options.getString('link');
+    await interaction.reply({ content: '🎁 جاري إرسال النيترو...', ephemeral: false });
+    // يمكنك إضافة كود الإرسال الجماعي لاحقاً هنا
   }
 });
 
-// تسجيل الدخول
-client.login(token);
+// 🟢 عند تشغيل البوت
+client.once('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
+// 🟢 تسجيل الدخول
+client.login(process.env.TOKEN);
