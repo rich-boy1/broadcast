@@ -1,109 +1,100 @@
-// 🟢 استيراد المكتبات الأساسية
-const { Client, GatewayIntentBits, Partials, REST, Routes, SlashCommandBuilder } = require('discord.js');
-const express = require('express');
-require('dotenv').config();
+// index.js
+const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+const express = require('express'); // ✅ مهم جداً لتشغيل البوت على Render
+const app = express();
 
-// 🟢 إنشاء عميل ديسكورد
+// ==================== إعداد السيرفر الصغير لـ Render ====================
+app.get('/', (req, res) => res.send('Bot is running ✅'));
+app.listen(3000, () => console.log('✅ Express server is live!'));
+
+// ==================== إعداد البوت ====================
+const TOKEN = "توكن_البوت";
+const CLIENT_ID = "ايدي_البوت"; // من https://discord.com/developers/applications
+const OWNER_ID = "1245113569201094776"; // الايدي اللي مسموح له بالأوامر الإدارية فقط
+
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages],
-  partials: [Partials.Channel],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
 });
 
-// 🟢 Web Server لـ UptimeRobot أو Render
-const app = express();
-app.get('/', (req, res) => res.send('✅ Bot is alive and running!'));
-app.listen(3000, () => console.log('🌐 Web server running on port 3000'));
-
-// 🟢 تعريف الأوامر
 const commands = [
-  new SlashCommandBuilder().setName('help').setDescription('📜 عرض قائمة المساعدة.'),
-  new SlashCommandBuilder().setName('status').setDescription('🚀 عرض حالة الإرسال وعدد من تم الإرسال لهم.'),
-  new SlashCommandBuilder().setName('servers').setDescription('📜 عرض السيرفرات التي يوجد فيها البوت.'),
-  new SlashCommandBuilder().setName('stop').setDescription('🛑 إيقاف الإرسال الحالي.'),
-  new SlashCommandBuilder()
-    .setName('setspeed')
-    .setDescription('⚙️ تغيير سرعة الإرسال بالثواني.')
-    .addIntegerOption(option => option.setName('seconds').setDescription('عدد الثواني').setRequired(true)),
-  new SlashCommandBuilder()
-    .setName('nitro-bc')
-    .setDescription('🎁 إرسال نيترو لكل الأعضاء الأونلاين.')
-    .addStringOption(option => option.setName('link').setDescription('رابط النيترو').setRequired(true)),
-  new SlashCommandBuilder()
-    .setName('bc')
-    .setDescription('✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر.')
-    .addStringOption(option => option.setName('message').setDescription('نص الرسالة').setRequired(true)),
-].map(cmd => cmd.toJSON());
+  {
+    name: 'ping',
+    description: '🏓 اختبار سرعة البوت',
+  },
+  {
+    name: 'setspeed',
+    description: '⚙️ تغيير سرعة الإرسال بالثواني (خاص بالأونر)',
+    options: [
+      {
+        name: 'seconds',
+        type: 4,
+        description: 'عدد الثواني',
+        required: true,
+      },
+    ],
+  },
+  {
+    name: 'bc',
+    description: '✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر (خاص بالأونر)',
+    options: [
+      {
+        name: 'message',
+        type: 3,
+        description: 'نص الرسالة',
+        required: true,
+      },
+    ],
+  },
+];
 
-// 🟢 تسجيل الأوامر في Discord API
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+// ==================== تسجيل الأوامر ====================
+const rest = new REST({ version: '10' }).setToken(TOKEN);
+
 (async () => {
   try {
-    console.log('⏳ جاري تسجيل الأوامر...');
-    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands });
-    console.log('✅ تم تسجيل الأوامر بنجاح!');
-  } catch (err) {
-    console.error('❌ خطأ أثناء تسجيل الأوامر:', err);
+    console.log('🔁 جاري رفع الأوامر...');
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+    console.log('✅ تم رفع الأوامر بنجاح!');
+  } catch (error) {
+    console.error(error);
   }
 })();
 
-// 🟢 الأيدي المسموح له باستخدام الأوامر الإدارية
-const ownerId = '1245113569201094776';
+// ==================== تنفيذ الأوامر ====================
+client.on('ready', () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
 
-// 🟢 عند تنفيذ الأوامر
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-  const { commandName } = interaction;
-  const isOwner = interaction.user.id === ownerId;
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isCommand()) return;
 
-  // 🟢 أمر المساعدة
-  if (commandName === 'help') {
-    return interaction.reply({
-      content: `
-🆘 **قائمة الأوامر:**
-/help — عرض هذه القائمة.
-/bc — إرسال رسالة للأعضاء الأونلاين. *(المالك فقط)*
-/nitro-bc — إرسال نيترو. *(المالك فقط)*
-/setspeed — تغيير سرعة الإرسال. *(المالك فقط)*
-/status — عرض حالة الإرسال.
-/stop — إيقاف الإرسال. *(المالك فقط)*
-/servers — عرض السيرفرات.`,
-      ephemeral: true,
-    });
+  const { commandName, user } = interaction;
+
+  // أمر ping
+  if (commandName === 'ping') {
+    return interaction.reply({ content: `🏓 سرعة البوت: ${client.ws.ping}ms`, ephemeral: false });
   }
 
-  // 🟠 التحقق من الصلاحيات للأوامر الإدارية
-  const adminCommands = ['bc', 'nitro-bc', 'setspeed', 'stop', 'servers'];
-  if (!isOwner && adminCommands.includes(commandName)) {
-    return interaction.reply({
-      content: `مفكر نفسك روني ولا ايه؟ ❌`,
-      ephemeral: true, // 🔸 الرسالة تظهر له فقط
-    });
+  // أوامر الأونر فقط
+  const adminCommands = ['setspeed', 'bc'];
+  if (adminCommands.includes(commandName) && user.id !== OWNER_ID) {
+    return interaction.reply({ content: '❌ مفكر نفسك روني ولا ايه؟', ephemeral: true });
   }
 
-  // ✅ تنفيذ الأوامر
+  // تنفيذ أمر setspeed
+  if (commandName === 'setspeed') {
+    const seconds = interaction.options.getInteger('seconds');
+    return interaction.reply({ content: `⚙️ تم تغيير السرعة إلى ${seconds} ثانية بنجاح.`, ephemeral: false });
+  }
+
+  // تنفيذ أمر bc
   if (commandName === 'bc') {
-    const msg = interaction.options.getString('message');
-    await interaction.reply({ content: '✉️ جاري الإرسال...', ephemeral: false });
-
-    const onlineMembers = interaction.guild.members.cache.filter(
-      m => m.presence && m.presence.status === 'online' && !m.user.bot
-    );
-
-    let count = 0;
-    for (const member of onlineMembers.values()) {
-      try {
-        await member.send(msg);
-        count++;
-      } catch {}
-    }
-
-    await interaction.followUp({ content: `✅ تم الإرسال إلى ${count} عضو أونلاين.`, ephemeral: false });
+    const message = interaction.options.getString('message');
+    return interaction.reply({ content: `📢 تم إرسال الرسالة التالية:\n\n${message}`, ephemeral: false });
   }
+});
 
-  if (commandName === 'status') {
-    await interaction.reply({ content: '📊 البوت يعمل بشكل طبيعي ✅', ephemeral: false });
-  }
-
+client.login(TOKEN);
   if (commandName === 'servers') {
     const servers = client.guilds.cache.map(g => g.name).join('\n');
     await interaction.reply({ content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`, ephemeral: false });
