@@ -1,98 +1,186 @@
-// index.js
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+require('dotenv').config();
 const express = require('express');
 const app = express();
+const port = process.env.PORT || 3000;
 
-app.get('/', (req, res) => res.send('Bot is running ✅'));
-app.listen(3000, () => console.log('✅ Express server is live!'));
+app.get('/', (req, res) => res.send('Bot is alive! ✅'));
+app.listen(port, () => console.log(`✅ Express server running on port ${port}`));
 
-const TOKEN = "توكن_البوت";
-const CLIENT_ID = "ايدي_البوت";
-const OWNER_ID = "1245113569201094776";
+const {
+    Client,
+    GatewayIntentBits,
+    SlashCommandBuilder,
+    REST,
+    Routes,
+    EmbedBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ActionRowBuilder,
+    Collection
+} = require('discord.js');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildPresences
+    ]
 });
+
+const authorizedIDs = ['1245113569201094776']; // فقط المالك الحقيقي
+const mainServerId = '1386543197018132560';
+
+let sending = false;
+let speed = 10 * 1000;
+let sentCount = 0;
 
 const commands = [
-  {
-    name: 'ping',
-    description: '🏓 اختبار سرعة البوت',
-  },
-  {
-    name: 'setspeed',
-    description: '⚙️ تغيير سرعة الإرسال بالثواني (خاص بالأونر)',
-    options: [
-      {
-        name: 'seconds',
-        type: 4,
-        description: 'عدد الثواني',
-        required: true,
-      },
-    ],
-  },
-  {
-    name: 'bc',
-    description: '✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر (خاص بالأونر)',
-    options: [
-      {
-        name: 'message',
-        type: 3,
-        description: 'نص الرسالة',
-        required: true,
-      },
-    ],
-  },
-  {
-    name: 'servers',
-    description: '📜 عرض السيرفرات التي يوجد فيها البوت (للأونر فقط)',
-  },
+    new SlashCommandBuilder().setName('help').setDescription('📜 عرض قائمة المساعدة.'),
+    new SlashCommandBuilder().setName('status').setDescription('🚀 عرض حالة التقدم وعدد من تم الإرسال لهم.'),
+    new SlashCommandBuilder().setName('servers').setDescription('📜 عرض السيرفرات.'),
+    new SlashCommandBuilder().setName('stop').setDescription('🛑 إيقاف الإرسال الحالي.'),
+    new SlashCommandBuilder()
+        .setName('setspeed')
+        .setDescription('⚙️ تغيير سرعة الإرسال بالثواني.')
+        .addIntegerOption(opt => opt.setName('seconds').setDescription('عدد الثواني').setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('nitro-bc')
+        .setDescription('🎁 إرسال نيترو لكل الأعضاء الأونلاين.')
+        .addStringOption(opt => opt.setName('link').setDescription('رابط النيترو').setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('bc')
+        .setDescription('✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر.')
+        .addStringOption(opt => opt.setName('message').setDescription('نص الرسالة').setRequired(true)),
 ];
 
-const rest = new REST({ version: '10' }).setToken(TOKEN);
+client.commands = new Collection();
+commands.forEach(cmd => client.commands.set(cmd.name, cmd));
 
-(async () => {
-  try {
-    console.log('🔁 جاري رفع الأوامر...');
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log('✅ تم رفع الأوامر بنجاح!');
-  } catch (error) {
-    console.error(error);
-  }
-})();
-
-client.on('ready', () => {
-  console.log(`✅ Logged in as ${client.user.tag}`);
+client.once('ready', async () => {
+    console.log(`✅ Logged in as ${client.user.tag}`);
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+    await rest.put(Routes.applicationCommands(client.user.id), { body: commands.map(c => c.toJSON()) });
+    console.log('✅ Slash commands registered globally.');
 });
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-  const { commandName, user } = interaction;
-  const adminCommands = ['setspeed', 'bc', 'servers'];
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
 
-  if (adminCommands.includes(commandName) && user.id !== OWNER_ID) {
-    return interaction.reply({ content: '❌ مفكر نفسك روني ولا ايه؟', ephemeral: true });
-  }
+    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc'].includes(interaction.commandName);
 
-  if (commandName === 'ping') {
-    return interaction.reply({ content: `🏓 سرعة البوت: ${client.ws.ping}ms`, ephemeral: false });
-  }
+    // التحقق من صلاحية المستخدم
+    if (isAdminCommand && !authorizedIDs.includes(interaction.user.id)) {
+        return interaction.reply({ content: 'مفكر نفسك روني ولا إيه؟ ❌', ephemeral: true });
+    }
 
-  if (commandName === 'setspeed') {
-    const seconds = interaction.options.getInteger('seconds');
-    return interaction.reply({ content: `⚙️ تم تغيير السرعة إلى ${seconds} ثانية بنجاح.`, ephemeral: false });
-  }
+    const { commandName } = interaction;
 
-  if (commandName === 'bc') {
-    const message = interaction.options.getString('message');
-    return interaction.reply({ content: `📢 تم إرسال الرسالة التالية:\n\n${message}`, ephemeral: false });
-  }
+    if (commandName === 'help') {
+        return interaction.reply({
+            content: `📜 **أوامر البوت:**\n\n`
+                + `1️⃣ /status - يعرض حالة التقدم وعدد المرسلين.\n`
+                + `2️⃣ /servers - يعرض السيرفرات اللي فيها البوت.\n`
+                + `3️⃣ /stop - يوقف الإرسال الحالي.\n`
+                + `4️⃣ /setspeed <ثواني> - يغير سرعة الإرسال.\n`
+                + `5️⃣ /nitro-bc <link> - يرسل نيترو للأعضاء الأونلاين.\n`
+                + `6️⃣ /bc <message> - يرسل رسالة للأعضاء الأونلاين.\n`
+                + `7️⃣ /help - عرض المساعدة.`,
+            ephemeral: false
+        });
+    }
 
-  if (commandName === 'servers') {
-    const servers = client.guilds.cache.map(g => `- ${g.name} (${g.id})`).join('\n');
-    return interaction.reply({ content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`, ephemeral: false });
-  }
+    else if (commandName === 'status') {
+        return interaction.reply({
+            content: `🚀 الحالة: ${sending ? `الإرسال جاري ✅ (أُرسل إلى ${sentCount} عضو)` : `❌ لا يوجد إرسال حالي. تم الإرسال لـ ${sentCount} عضو.`}`,
+            ephemeral: false
+        });
+    }
+
+    else if (commandName === 'servers') {
+        const servers = client.guilds.cache.map((g, i) => `${i + 1}. ${g.name}`).join('\n');
+        return interaction.reply({
+            content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`,
+            ephemeral: false
+        });
+    }
+
+    else if (commandName === 'stop') {
+        sending = false;
+        return interaction.reply({ content: '🛑 تم إيقاف الإرسال الحالي.', ephemeral: false });
+    }
+
+    else if (commandName === 'setspeed') {
+        const sec = interaction.options.getInteger('seconds');
+        speed = sec * 1000;
+        return interaction.reply({ content: `⚙️ تم تعيين سرعة الإرسال إلى **${sec} ثانية**.`, ephemeral: false });
+    }
+
+    else if (commandName === 'nitro-bc') {
+        const link = interaction.options.getString('link');
+        await interaction.reply({ content: '🚀 بدأ إرسال نيترو للأعضاء الأونلاين...', ephemeral: false });
+
+        sending = true;
+        sentCount = 0;
+        const sentUsers = new Set();
+
+        for (const [id, guild] of client.guilds.cache) {
+            if (!sending) break;
+            try {
+                const members = await guild.members.fetch({ withPresences: true });
+                for (const member of members.values()) {
+                    if (!sending) break;
+                    const status = member.presence?.status;
+                    if (!member.user.bot && ['online', 'idle', 'dnd'].includes(status) && !sentUsers.has(member.user.id)) {
+                        try {
+                            const embed = new EmbedBuilder()
+                                .setColor(0x5865F2)
+                                .setDescription(`🎁 Hello ${member.toString()},\nYou’ve been gifted a **Discord Nitro Boost (1 year)**!\nClick below to claim your Nitro!`)
+                                .setImage('https://cdn.discordapp.com/attachments/1344770064703946802/1362981864305987594/271-A2-D28-057-B-4-B8-F-ADDE-A547-CC3-E36-B8.jpg')
+                                .setFooter({ text: `🎉 Gift sent!` });
+
+                            const button = new ButtonBuilder()
+                                .setLabel('Claim')
+                                .setStyle(ButtonStyle.Link)
+                                .setURL(link)
+                                .setEmoji('🎁');
+
+                            const row = new ActionRowBuilder().addComponents(button);
+
+                            await member.send({ embeds: [embed], components: [row] });
+                            sentUsers.add(member.user.id);
+                            sentCount++;
+                            console.log(`📤 Sent to ${member.user.tag}`);
+                            await sleep(speed);
+                        } catch { }
+                    }
+                }
+            } catch { }
+        }
+    }
+
+    else if (commandName === 'bc') {
+        const msg = interaction.options.getString('message');
+        const guild = client.guilds.cache.get(mainServerId);
+        if (!guild) return interaction.reply({ content: '❌ السيرفر الأساسي غير موجود.', ephemeral: false });
+
+        await interaction.reply({ content: '🚀 جاري إرسال الرسائل...', ephemeral: false });
+
+        const members = await guild.members.fetch({ withPresences: true });
+        for (const member of members.values()) {
+            const status = member.presence?.status;
+            if (!member.user.bot && ['online', 'idle', 'dnd'].includes(status)) {
+                member.send(`${msg}\n${member.toString()}`).catch(() => { });
+                sentCount++;
+                await sleep(speed);
+            }
+        }
+    }
 });
 
-client.login(TOKEN);
+client.login(process.env.TOKEN);
