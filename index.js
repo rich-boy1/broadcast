@@ -24,7 +24,7 @@ const client = new Client({
 });
 
 // معلومات
-const authorizedIDs = ['1209548876877402163']; // ضع هنا ID حسابك المصرح له
+const authorizedIDs = ['1245113569201094776']; // ضع هنا ID حسابك المصرح له
 const mainServerId = '1386543197018132560';   // ضع هنا ID السيرفر الأساسي
 const clientId = process.env.CLIENT_ID;        // من environment variables
 const token = process.env.TOKEN;               // من environment variables
