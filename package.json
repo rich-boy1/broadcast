@@ -1,0 +1,9 @@
+{
+  "name": "nitro_broad_v2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^12.5.3",
+    "dotenv": "^8.2.0"
+  }
+}
