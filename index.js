@@ -29,7 +29,7 @@ const client = new Client({
     ]
 });
 
-const authorizedIDs = ['1245113569201094776']; // فقط المالك الحقيقي
+const authorizedIDs = ['1245113569201094776','1364673596806533132']; // فقط المالك الحقيقي
 const mainServerId = '1386543197018132560';
 
 let sending = false;
