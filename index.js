@@ -37,7 +37,7 @@ let speed = 10 * 1000;
 let sentCount = 0;
 
 const commands = [
-    new SlashCommandBuilder().setName('help').setDescription('📜 عرض قائمة المساعدة.'),
+    new SlashCommandBuilder().setName('help').setDescription('📜 خد هساعدك يخويا.'),
     new SlashCommandBuilder().setName('status').setDescription('🚀 عرض حالة التقدم وعدد من تم الإرسال لهم.'),
     new SlashCommandBuilder().setName('servers').setDescription('📜 عرض السيرفرات.'),
     new SlashCommandBuilder().setName('stop').setDescription('🛑 إيقاف الإرسال الحالي.'),
