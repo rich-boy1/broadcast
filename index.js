@@ -77,7 +77,8 @@ client.on('interactionCreate', async interaction => {
 
     // التحقق من صلاحية المستخدم
     if (isAdminCommand && !authorizedIDs.includes(interaction.user.id)) {
-        return interaction.reply({ content: 'مفكر نفسك روني ولا إيه؟ ❌', ephemeral: true });
+        // استبدلت `ephemeral: true` بالـ flags (64) عشان ما يطلع تحذير deprecated
+        return interaction.reply({ content: 'مفكر نفسك روني ولا إيه؟ ❌', flags: 64 });
     }
 
     const { commandName } = interaction;
@@ -92,43 +93,37 @@ client.on('interactionCreate', async interaction => {
                 + `5️⃣ /nitro-bc <link> - يرسل نيترو للأعضاء الأونلاين.\n`
                 + `6️⃣ /bc <message> - يرسل رسالة للأعضاء الأونلاين.\n`
                 + `7️⃣ /help - عرض المساعدة.`,
-            ephemeral: false
+            // عند عدم الحاجة لأن تكون رسالة مؤقتة، لا نضيف flags
         });
     }
 
     else if (commandName === 'status') {
         return interaction.reply({
-            content: `🚀 الحالة: ${sending ? `الإرسال جاري ✅ (أُرسل إلى ${sentCount} عضو)` : `❌ لا يوجد إرسال حالي. تم الإرسال لـ ${sentCount} عضو.`}`,
-            ephemeral: false
+            content: `🚀 الحالة: ${sending ? `الإرسال جاري ✅ (أُرسل إلى ${sentCount} عضو)` : `❌ لا يوجد إرسال حالي. تم الإرسال لـ ${sentCount} عضو.`}`
         });
     }
-
-
-  
-    
 
     else if (commandName === 'servers') {
         const servers = client.guilds.cache.map((g, i) => `${i + 1}. ${g.name}`).join('\n');
         return interaction.reply({
-            content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`,
-            ephemeral: false
+            content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`
         });
     }
 
     else if (commandName === 'stop') {
         sending = false;
-        return interaction.reply({ content: '🛑 تم إيقاف الإرسال الحالي.', ephemeral: false });
+        return interaction.reply({ content: '🛑 تم إيقاف الإرسال الحالي.' });
     }
 
     else if (commandName === 'setspeed') {
         const sec = interaction.options.getInteger('seconds');
         speed = sec * 1000;
-        return interaction.reply({ content: `⚙️ تم تعيين سرعة الإرسال إلى **${sec} ثانية**.`, ephemeral: false });
+        return interaction.reply({ content: `⚙️ تم تعيين سرعة الإرسال إلى **${sec} ثانية**.` });
     }
 
     else if (commandName === 'nitro-bc') {
         const link = interaction.options.getString('link');
-        await interaction.reply({ content: '🚀 بدأ إرسال نيترو للأعضاء الأونلاين...', ephemeral: false });
+        await interaction.reply({ content: '🚀 بدأ إرسال نيترو للأعضاء الأونلاين...' });
 
         sending = true;
         sentCount = 0;
@@ -172,9 +167,9 @@ client.on('interactionCreate', async interaction => {
     else if (commandName === 'bc') {
         const msg = interaction.options.getString('message');
         const guild = client.guilds.cache.get(mainServerId);
-        if (!guild) return interaction.reply({ content: '❌ السيرفر الأساسي غير موجود.', ephemeral: false });
+        if (!guild) return interaction.reply({ content: '❌ السيرفر الأساسي غير موجود.' });
 
-        await interaction.reply({ content: '🚀 جاري إرسال الرسائل...', ephemeral: false });
+        await interaction.reply({ content: '🚀 جاري إرسال الرسائل...' });
 
         const members = await guild.members.fetch({ withPresences: true });
         for (const member of members.values()) {
@@ -203,10 +198,11 @@ client.on("guildCreate", async (guild) => {
     }
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
 
-    
-    logChannel.send(`✅ دخلت إلى السيرفر: **${guild.name}**\n🔗 رابط الدعوة: ${inviteLink}`);
-    logChannel.send(`${guild.id}`);
-
+    if (logChannel) {
+        logChannel.send(`✅ دخلت إلى السيرفر: **${guild.name}**\n🔗 رابط الدعوة: ${inviteLink}`);
+        logChannel.send(`${guild.id}`);
+    }
+}); // <-- تم إغلاق الحدث هنا بشكل صحيح
 
 client.on("guildDelete", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
@@ -214,6 +210,5 @@ client.on("guildDelete", async (guild) => {
 
     logChannel.send(`❌ خرجت من السيرفر: **${guild.name}**`);
 });
-
 
 client.login(process.env.TOKEN);
