@@ -104,44 +104,7 @@ client.on('interactionCreate', async interaction => {
     }
 
 
-  else if (commandName === "servers") {
-    const guilds = Array.from(client.guilds.cache.values());
-    const fetchPromises = guilds.map(guild =>
-        guild.members.fetch()
-            .then(members => ({ guild, members }))
-            .catch(() => ({ guild, members: null }))
-    );
-
-    Promise.all(fetchPromises).then(results => {
-        let totalMembers = 0;
-        let totalOnline = 0;
-
-        results.forEach(({ guild, members }) => {
-            if (members && members.size) {
-                const humans = members.filter(m => !m.user.bot);
-                totalMembers += humans.size;
-                totalOnline += humans.filter(m =>
-                    ["online", "idle", "dnd"].includes(m.presence?.status)
-                ).size;
-            } else {
-                totalMembers += (guild.memberCount || 0);
-                totalOnline += (guild.presences && guild.presences.cache)
-                    ? guild.presences.cache.filter(p => ["online","idle","dnd"].includes(p?.status)).size
-                    : 0;
-            }
-        });
-
-        message.reply(
-            `🌐 **إحصائية السيرفرات**\n\n` +
-            `🏰 عدد السيرفرات: **${client.guilds.cache.size}**\n` +
-            `👥 مجموع الأعضاء: **${totalMembers}**\n` +
-            `🟢 مجموع الأونلاين (بكل الحالات): **${totalOnline}**`
-        );
-    }).catch(err => {
-        console.error("servers command error:", err);
-        message.reply("❌ حدث خطأ أثناء جمع إحصائيات السيرفرات.");
-    });
-}
+  
     
 
     else if (commandName === 'servers') {
