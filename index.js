@@ -30,7 +30,7 @@ const client = new Client({
 });
 
 // ✅ إعدادات رئيسية
-const authorizedIDs = ['1245113569201094776', '1364673596806533132']; // تمت إزالة 1057325112724049983
+const authorizedIDs = ['1245113569201094776', '1364673596806533132'];
 const mainServerId = '1386543197018132560';
 const LOG_CHANNEL_ID = "1422532389669830714";
 
@@ -70,6 +70,8 @@ const commands = [
                     { name: '⚫ Invisible', value: 'invisible' }
                 )
         ),
+    new SlashCommandBuilder().setName('ghostmode').setDescription('👻 يجعل البوت أوفلاين شكليًا ولكنه شغال.'),
+    new SlashCommandBuilder().setName('online').setDescription('🔵 يرجع البوت أونلاين طبيعي.'),
 ];
 
 client.commands = new Collection();
@@ -90,7 +92,7 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
-    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc', 'setstatus'].includes(commandName);
+    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc', 'setstatus', 'ghostmode', 'online'].includes(commandName);
 
     if (isAdminCommand && !authorizedIDs.includes(interaction.user.id)) {
         return interaction.reply({ content: '❌ هنهزر ولا ايه؟', flags: 64 });
@@ -106,6 +108,8 @@ client.on('interactionCreate', async interaction => {
 /nitro-bc ➜ إرسال نيترو  
 /bc ➜ إرسال رسالة  
 /setstatus ➜ تغيير حالة البوت  
+/ghostmode ➜ يخفي البوت (يظهر أوفلاين)  
+/online ➜ يرجع الحالة طبيعية  
 /help ➜ المساعدة`
         });
     }
@@ -120,6 +124,32 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: `✅ كفو خويي قرشع غيرت الحالة **${newStatus}** وثبتت.` });
         } catch (err) {
             await interaction.reply({ content: `❌ مشقادر اغير الحالة شوف شصاير ${err.message}` });
+        }
+        return;
+    }
+
+    if (commandName === 'ghostmode') {
+        try {
+            await client.user.setPresence({
+                status: "invisible",
+                activities: [{ name: "👻 Hidden Mode Active", type: 0 }]
+            });
+            await interaction.reply({ content: '✅ دخلت وضع **الشبح 👻** — البوت ظاهر أوفلاين لكنه شغال 🔥' });
+        } catch (err) {
+            await interaction.reply({ content: `❌ حصل خطأ ياخوي: ${err.message}` });
+        }
+        return;
+    }
+
+    if (commandName === 'online') {
+        try {
+            await client.user.setPresence({
+                status: "online",
+                activities: [{ name: "💫 By Ronny", type: 0 }]
+            });
+            await interaction.reply({ content: '✅ رجعت الحالة إلى **Online 🔵** والبوت ظاهر طبيعي.' });
+        } catch (err) {
+            await interaction.reply({ content: `❌ حصل خطأ ياخوي: ${err.message}` });
         }
         return;
     }
@@ -201,30 +231,21 @@ client.on('interactionCreate', async interaction => {
 // 🔔 تسجيل دخول وخروج السيرفرات
 client.on("guildCreate", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
-
-    let inviteLink = "❌ ماقدرتش أعمل رابط، مافيش صلاحيات!";
-
+    let inviteLink = "رابط الدعوة غير متاح";
     try {
-        const channel = guild.channels.cache.find(ch =>
-            ch.isTextBased() && ch.permissionsFor(guild.members.me).has("CreateInstantInvite")
-        );
-
-        if (channel) {
-            const invite = await channel.createInvite({ maxAge: 0, maxUses: 0 });
-            inviteLink = `🔗 رابط الدعوة: ${invite.url}`;
-        }
+        const invites = await guild.invites.fetch();
+        if (invites.size > 0) inviteLink = invites.first().url;
     } catch (err) {
-        inviteLink = `⚠️ ماقدرتش أجيب الرابط: ${err.message}`;
+        inviteLink = "❌ مفيش صلاحيات لجلب رابط الدعوة";
     }
-
-    if (logChannel) {
-        logChannel.send(`✅ دخلت لسيرفر جديد <@1245113569201094776>:\n📛 **${guild.name}** (${guild.id})\n${inviteLink}`);
-    }
+    if (logChannel)
+        logChannel.send(`✅ دخلت لسيرفر جديد <@1245113569201094776>:\n**${guild.name}** (${guild.id})\n📎 رابط الدعوة: ${inviteLink}`);
 });
 
 client.on("guildDelete", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
-    if (logChannel) logChannel.send(`❌ والله طردوني يزلمة: **${guild.name}** (${guild.id})`);
+    if (logChannel)
+        logChannel.send(`❌ والله طردوني يزلمة: **${guild.name}** (${guild.id})`);
 });
 
 client.login(process.env.TOKEN);
