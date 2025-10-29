@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -103,10 +102,9 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'ghostmode') {
         try {
             await client.user.setPresence({
-                status: "invisible",
-                activities: [{ name: "👻 Hidden Mode Active", type: 0 }]
+                status: "invisible"
             });
-            await interaction.reply({ content: '✅ دخلت وضع **الشبح 👻** — البوت ظاهر أوفلاين لكنه شغال 🔥' });
+            await interaction.reply({ content: '✅ دخلت وضع **الشبح 👻** — البوت الحين أوفلاين تمامًا لكنه شغال 🔥' });
         } catch (err) {
             await interaction.reply({ content: `❌ حصل خطأ ياخوي: ${err.message}` });
         }
@@ -220,4 +218,4 @@ client.on("guildDelete", async (guild) => {
         logChannel.send(`❌ والله طردوني يزلمة: **${guild.name}** (${guild.id})`);
 });
 
-client.login(process.env.TOKEN); 
+client.login(process.env.TOKEN);
