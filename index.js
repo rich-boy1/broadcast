@@ -1,3 +1,4 @@
+
 require('dotenv').config();
 const express = require('express');
 const app = express();
@@ -56,27 +57,8 @@ const commands = [
         .setName('bc')
         .setDescription('✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر.')
         .addStringOption(opt => opt.setName('message').setDescription('نص الرسالة').setRequired(true)),
-    new SlashCommandBuilder()
-        .setName('setstatus')
-        .setDescription('🟢 تغيير حالة البوت (online / idle / dnd / invisible).')
-        .addStringOption(opt =>
-            opt.setName('status')
-                .setDescription('اختر الحالة الجديدة')
-                .setRequired(true)
-                .addChoices(
-                    { name: '🟢 Online', value: 'online' },
-                    { name: '🌙 Idle', value: 'idle' },
-                    { name: '⛔ DND', value: 'dnd' },
-                    { name: '⚫ Invisible', value: 'invisible' }
-                )
-        ),
-    // ✅ أمر الشبح
-    new SlashCommandBuilder()
-        .setName('ghostmode')
-        .setDescription('👻 يخفي البوت (يظهر أوفلاين لكنه يشتغل فعلياً).'),
-    new SlashCommandBuilder()
-        .setName('online')
-        .setDescription('🔵 يرجّع البوت للوضع الطبيعي (أونلاين).'),
+    new SlashCommandBuilder().setName('ghostmode').setDescription('👻 يجعل البوت أوفلاين شكليًا ولكنه شغال.'),
+    new SlashCommandBuilder().setName('online').setDescription('🔵 يرجع البوت أونلاين طبيعي.'),
 ];
 
 client.commands = new Collection();
@@ -97,7 +79,7 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
-    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc', 'setstatus', 'ghostmode', 'online'].includes(commandName);
+    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc', 'ghostmode', 'online'].includes(commandName);
 
     if (isAdminCommand && !authorizedIDs.includes(interaction.user.id)) {
         return interaction.reply({ content: '❌ هنهزر ولا ايه؟', flags: 64 });
@@ -112,33 +94,17 @@ client.on('interactionCreate', async interaction => {
 /setspeed ➜ تغيير سرعة الإرسال  
 /nitro-bc ➜ إرسال نيترو  
 /bc ➜ إرسال رسالة  
-/setstatus ➜ تغيير حالة البوت  
 /ghostmode ➜ يخفي البوت (يظهر أوفلاين)  
 /online ➜ يرجع الحالة طبيعية  
 /help ➜ المساعدة`
         });
     }
 
-    if (commandName === 'setstatus') {
-        const newStatus = interaction.options.getString('status');
-        try {
-            await client.user.setPresence({
-                status: newStatus,
-                activities: [{ name: '💫 By Ronny', type: 0 }]
-            });
-            await interaction.reply({ content: `✅ كفو خويي قرشع غيرت الحالة **${newStatus}** وثبتت.` });
-        } catch (err) {
-            await interaction.reply({ content: `❌ مشقادر اغير الحالة شوف شصاير ${err.message}` });
-        }
-        return;
-    }
-
-    // ✅ أمر الشبح
     if (commandName === 'ghostmode') {
         try {
             await client.user.setPresence({
                 status: "invisible",
-                activities: [{ name: "👻 Ghost Mode Active", type: 0 }]
+                activities: [{ name: "👻 Hidden Mode Active", type: 0 }]
             });
             await interaction.reply({ content: '✅ دخلت وضع **الشبح 👻** — البوت ظاهر أوفلاين لكنه شغال 🔥' });
         } catch (err) {
@@ -147,7 +113,6 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
-    // ✅ أمر رجوع أونلاين
     if (commandName === 'online') {
         try {
             await client.user.setPresence({
@@ -255,4 +220,4 @@ client.on("guildDelete", async (guild) => {
         logChannel.send(`❌ والله طردوني يزلمة: **${guild.name}** (${guild.id})`);
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.TOKEN); 
