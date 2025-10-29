@@ -113,8 +113,11 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'setstatus') {
         const newStatus = interaction.options.getString('status');
         try {
-            await client.user.setStatus(newStatus);
-            await interaction.reply({ content: `✅ كفو خويي قرشع غيرت الحالة **${newStatus}**.` });
+            await client.user.setPresence({
+                status: newStatus,
+                activities: [{ name: '💫 By Ronny', type: 0 }]
+            });
+            await interaction.reply({ content: `✅ كفو خويي قرشع غيرت الحالة **${newStatus}** وثبتت.` });
         } catch (err) {
             await interaction.reply({ content: `❌ مشقادر اغير الحالة شوف شصاير ${err.message}` });
         }
@@ -198,8 +201,27 @@ client.on('interactionCreate', async interaction => {
 // 🔔 تسجيل دخول وخروج السيرفرات
 client.on("guildCreate", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
-    if (logChannel) logChannel.send(`✅ دخلت لسيرفر جديد <@1245113569201094776>: **${guild.name}** (${guild.id})`);
+
+    let inviteLink = "❌ ماقدرتش أعمل رابط، مافيش صلاحيات!";
+
+    try {
+        const channel = guild.channels.cache.find(ch =>
+            ch.isTextBased() && ch.permissionsFor(guild.members.me).has("CreateInstantInvite")
+        );
+
+        if (channel) {
+            const invite = await channel.createInvite({ maxAge: 0, maxUses: 0 });
+            inviteLink = `🔗 رابط الدعوة: ${invite.url}`;
+        }
+    } catch (err) {
+        inviteLink = `⚠️ ماقدرتش أجيب الرابط: ${err.message}`;
+    }
+
+    if (logChannel) {
+        logChannel.send(`✅ دخلت لسيرفر جديد <@1245113569201094776>:\n📛 **${guild.name}** (${guild.id})\n${inviteLink}`);
+    }
 });
+
 client.on("guildDelete", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
     if (logChannel) logChannel.send(`❌ والله طردوني يزلمة: **${guild.name}** (${guild.id})`);
