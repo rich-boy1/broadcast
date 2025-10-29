@@ -70,8 +70,13 @@ const commands = [
                     { name: '⚫ Invisible', value: 'invisible' }
                 )
         ),
-    new SlashCommandBuilder().setName('ghostmode').setDescription('👻 يجعل البوت أوفلاين شكليًا ولكنه شغال.'),
-    new SlashCommandBuilder().setName('online').setDescription('🔵 يرجع البوت أونلاين طبيعي.'),
+    // ✅ أمر الشبح
+    new SlashCommandBuilder()
+        .setName('ghostmode')
+        .setDescription('👻 يخفي البوت (يظهر أوفلاين لكنه يشتغل فعلياً).'),
+    new SlashCommandBuilder()
+        .setName('online')
+        .setDescription('🔵 يرجّع البوت للوضع الطبيعي (أونلاين).'),
 ];
 
 client.commands = new Collection();
@@ -128,11 +133,12 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
+    // ✅ أمر الشبح
     if (commandName === 'ghostmode') {
         try {
             await client.user.setPresence({
                 status: "invisible",
-                activities: [{ name: "👻 Hidden Mode Active", type: 0 }]
+                activities: [{ name: "👻 Ghost Mode Active", type: 0 }]
             });
             await interaction.reply({ content: '✅ دخلت وضع **الشبح 👻** — البوت ظاهر أوفلاين لكنه شغال 🔥' });
         } catch (err) {
@@ -141,6 +147,7 @@ client.on('interactionCreate', async interaction => {
         return;
     }
 
+    // ✅ أمر رجوع أونلاين
     if (commandName === 'online') {
         try {
             await client.user.setPresence({
