@@ -54,6 +54,22 @@ const commands = [
         .setName('bc')
         .setDescription('✉️ إرسال رسالة للأعضاء الأونلاين في السيرفر.')
         .addStringOption(opt => opt.setName('message').setDescription('نص الرسالة').setRequired(true)),
+    // ✅ الأمر الجديد لتغيير حالة البوت
+    new SlashCommandBuilder()
+        .setName('setstatus')
+        .setDescription('🟢 تغيير حالة البوت (online / idle / dnd / invisible).')
+        .addStringOption(opt =>
+            opt
+                .setName('status')
+                .setDescription('اختر الحالة الجديدة.')
+                .setRequired(true)
+                .addChoices(
+                    { name: '🟢 Online', value: 'online' },
+                    { name: '🌙 Idle', value: 'idle' },
+                    { name: '⛔ DND (مشغول)', value: 'dnd' },
+                    { name: '⚫ Invisible (أوفلاين)', value: 'invisible' }
+                )
+        ),
 ];
 
 client.commands = new Collection();
@@ -64,6 +80,10 @@ client.once('ready', async () => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     await rest.put(Routes.applicationCommands(client.user.id), { body: commands.map(c => c.toJSON()) });
     console.log('✅ Slash commands registered globally.');
+
+    // 🔴 الحالة الافتراضية: أوفلاين
+    client.user.setPresence({ status: 'invisible' });
+    console.log('🔴 تم تعيين حالة البوت إلى Offline بشكل افتراضي.');
 });
 
 function sleep(ms) {
@@ -73,15 +93,14 @@ function sleep(ms) {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc'].includes(interaction.commandName);
+    const { commandName } = interaction;
+
+    const isAdminCommand = ['stop', 'setspeed', 'nitro-bc', 'bc', 'setstatus'].includes(commandName);
 
     // التحقق من صلاحية المستخدم
     if (isAdminCommand && !authorizedIDs.includes(interaction.user.id)) {
-        // استبدلت `ephemeral: true` بالـ flags (64) عشان ما يطلع تحذير deprecated
         return interaction.reply({ content: 'مفكر نفسك روني ولا إيه؟ ❌', flags: 64 });
     }
-
-    const { commandName } = interaction;
 
     if (commandName === 'help') {
         return interaction.reply({
@@ -92,8 +111,8 @@ client.on('interactionCreate', async interaction => {
                 + `4️⃣ /setspeed <ثواني> - يغير سرعة الإرسال.\n`
                 + `5️⃣ /nitro-bc <link> - يرسل نيترو للأعضاء الأونلاين.\n`
                 + `6️⃣ /bc <message> - يرسل رسالة للأعضاء الأونلاين.\n`
-                + `7️⃣ /help - عرض المساعدة.`,
-            // عند عدم الحاجة لأن تكون رسالة مؤقتة، لا نضيف flags
+                + `7️⃣ /setstatus <الحالة> - يغير حالة البوت.\n`
+                + `8️⃣ /help - عرض المساعدة.`,
         });
     }
 
@@ -105,9 +124,7 @@ client.on('interactionCreate', async interaction => {
 
     else if (commandName === 'servers') {
         const servers = client.guilds.cache.map((g, i) => `${i + 1}. ${g.name}`).join('\n');
-        return interaction.reply({
-            content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}`
-        });
+        return interaction.reply({ content: `📜 السيرفرات التي يوجد فيها البوت:\n${servers}` });
     }
 
     else if (commandName === 'stop') {
@@ -181,6 +198,16 @@ client.on('interactionCreate', async interaction => {
             }
         }
     }
+
+    else if (commandName === 'setstatus') {
+        const status = interaction.options.getString('status');
+        try {
+            await client.user.setPresence({ status });
+            return interaction.reply({ content: `✅ تم تغيير حالة البوت إلى **${status}**.` });
+        } catch (err) {
+            return interaction.reply({ content: `⚠️ حدث خطأ أثناء تغيير الحالة: ${err.message}` });
+        }
+    }
 });
 
 client.on("guildCreate", async (guild) => {
@@ -202,12 +229,11 @@ client.on("guildCreate", async (guild) => {
         logChannel.send(`✅ دخلت إلى السيرفر: **${guild.name}**\n🔗 رابط الدعوة: ${inviteLink}`);
         logChannel.send(`${guild.id}`);
     }
-}); // <-- تم إغلاق الحدث هنا بشكل صحيح
+});
 
 client.on("guildDelete", async (guild) => {
     const logChannel = client.channels.cache.get(LOG_CHANNEL_ID);
     if (!logChannel) return;
-
     logChannel.send(`❌ خرجت من السيرفر: **${guild.name}**`);
 });
 
