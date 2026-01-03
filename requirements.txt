@@ -1,0 +1,4 @@
+discord.py-self
+google-generativeai
+pyfiglet
+python-dotenv
