@@ -17,35 +17,34 @@ model = genai.GenerativeModel("gemini-2.5-flash")
 
 client = commands.Bot(command_prefix=".", self_bot=True, help_command=None)
 
-# ================== GLOBALS ==================
+# ============ GLOBALS ============
 ai_mode = False
 cooldown_seconds = 6
 last_ai_reply = 0
-
-genie_sessions = {}
 scheduled_posts = {}
+genie_sessions = {}
 REPLY_CHANCE = 0.8  # حماية ضد rate limit
 
-# ================== READY ==================
+# ================= READY =================
 @client.event
 async def on_ready():
     print(f"✅ Logged in as {client.user}")
 
-# ================== AI TOGGLE ==================
+# ================= AI TOGGLE =================
 @client.command()
 async def ai(ctx):
     global ai_mode
     ai_mode = not ai_mode
     await ctx.send(f"🤖 AI is now {'ON' if ai_mode else 'OFF'}", delete_after=4)
 
-# ================== COOLDOWN COMMAND ==================
+# ================= COOLDOWN COMMAND =================
 @client.command()
 async def cooldown(ctx, seconds: int):
     global cooldown_seconds
     cooldown_seconds = seconds
     await ctx.send(f"⏱️ تم ضبط الكول داون على {seconds} ثانية", delete_after=4)
 
-# ================== GENIE GAME ==================
+# ================= GENIE GAME =================
 def new_genie():
     return {"questions": [], "last_q": "", "confirmed": False}
 
@@ -60,7 +59,7 @@ async def genie_guess(session):
     r = model.generate_content(prompt)
     return r.text.strip()
 
-# ================== MESSAGE HANDLER ==================
+# ================= MESSAGE HANDLER =================
 @client.event
 async def on_message(message):
     global last_ai_reply
@@ -116,7 +115,7 @@ async def on_message(message):
 
     await client.process_commands(message)
 
-# ================== COMMANDS ==================
+# ================= COMMANDS =================
 @client.command()
 async def genie(ctx):
     genie_sessions[ctx.author.id] = new_genie()
@@ -157,9 +156,5 @@ async def av(ctx, user: discord.User = None):
     user = user or ctx.author
     await ctx.send(user.avatar.url)
 
-@client.command()
-async def join(ctx):
-    if ctx.author.voice:
-        await ctx.author.voice.channel.connect()
-
+# ================= RUN =================
 client.run(TOKEN)
